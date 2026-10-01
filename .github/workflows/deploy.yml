@@ -1,0 +1,83 @@
+name: Deploy staging site
+
+on:
+  workflow_dispatch:
+    inputs:
+      gcme_ref:
+        description: Branch, tag, or SHA of jhu-digital-manuscripts/gcme
+        required: true
+        type: string
+        default: main
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out gcme
+        uses: actions/checkout@v4
+        with:
+          repository: jhu-digital-manuscripts/gcme
+          ref: ${{ inputs.gcme_ref }}
+          path: gcme
+
+      - name: Set up JDK 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: gcme/gcme-tool/pom.xml
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: npm
+          cache-dependency-path: gcme/gcme-ember/package-lock.json
+
+      - name: Build gcme-tool
+        working-directory: gcme/gcme-tool
+        env:
+          GCME_DATA: ../data
+        run: mvn -B clean verify
+
+      - name: Generate data
+        working-directory: gcme/deploy
+        run: ./gen_data.sh
+
+      - name: Install gcme-ember dependencies
+        working-directory: gcme/gcme-ember
+        run: npm ci
+
+      - name: Build gcme-ember
+        working-directory: gcme/gcme-ember
+        run: npm run build
+
+      - name: Add .nojekyll
+        run: touch gcme/gcme-ember/dist/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: gcme/gcme-ember/dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
