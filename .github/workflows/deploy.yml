@@ -54,6 +54,8 @@ jobs:
 
       - name: Build gcme-ember
         working-directory: gcme/gcme-ember
+        env:
+          GCME_ROOT_URL: /gcme-stage/
         run: npm run build
 
       - name: Add .nojekyll
