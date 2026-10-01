@@ -25,21 +25,18 @@ jobs:
           repository: jhu-digital-manuscripts/gcme
           ref: ${{ inputs.gcme_ref }}
           path: gcme
+          persist-credentials: false
 
       - name: Set up JDK 25 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
-          cache: maven
-          cache-dependency-path: gcme/gcme-tool/pom.xml
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          cache: npm
-          cache-dependency-path: gcme/gcme-ember/package-lock.json
 
       - name: Build gcme-tool
         working-directory: gcme/gcme-tool
